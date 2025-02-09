@@ -1,0 +1,202 @@
+<html>
+
+<style>
+    div#canvas_bg {
+        width: fit-content;
+        border: 1px solid black;
+        padding: 20 10 0 10;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    div {
+        width: fit-content;
+        padding: 20;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+
+<div>
+    Demo of <a href="https://en.wikipedia.org/wiki/Dining_philosophers_problem">Dining Philosophers Problem</a>
+</div>
+
+<div id="canvas_bg">
+    <canvas id="canvas" width="300" height="300"></canvas>
+</div>
+<div id="buttons_bg">
+    <button id="start_mutex">Start(Mutex)</button>
+    <button id="start_mutexgroup">Start(MutexGroup)</button>
+    <button id="stop" disabled>Stop</button>
+</div>
+
+<script>
+    const canvas = document.querySelector("#canvas");
+    const startMutex = document.querySelector("#start_mutex");
+    const startMutexGroup = document.querySelector("#start_mutexgroup");
+    const stop = document.querySelector("#stop");
+
+    const N = 5 // Number of philosophers.
+
+    const HEAD_R = 20; // Radius of head
+    const ARM_LEN = 40; // Length of arms
+    const STICK_LEN = 25; // Length of sticks
+    const SIDE = canvas.clientWidth;
+    const CENTER = SIDE / 2;
+    const HEAD_ANGLE = Math.PI * 2 / N // Angle between two philosophers
+
+    const ON_TABLE = 0
+    const HOLD_BY_LEFT = 1
+    const HOLD_BY_RIGHT = 2
+
+
+    function drawPhilosophers(ctx, sticks) {
+        // Draw the table
+        ctx.save()
+        ctx.beginPath();
+        ctx.arc(CENTER, CENTER, SIDE / 2 - HEAD_R - ARM_LEN, 0, Math.PI * 2);
+        ctx.fillStyle = "rgb(0 0 0 / 5%)";
+        ctx.fill();
+        ctx.restore();
+
+        for (let i = 0; i < N; i++) {
+            const angle = i * HEAD_ANGLE
+            const holdLeft = sticks[i] == HOLD_BY_RIGHT
+            const right = sticks[i == N - 1 ? 0 : i + 1]
+
+            ctx.beginPath();
+            ctx.save();
+            // Draw head
+            ctx.translate(CENTER, CENTER); // Move to center
+            ctx.rotate(angle);
+            ctx.translate(-CENTER, -CENTER);
+            const y = HEAD_R + 1
+            ctx.arc(CENTER, y, HEAD_R, 0, Math.PI * 2) // Head
+            // Draw right stick on table
+            if (right == ON_TABLE) {
+                ctx.save();
+                ctx.translate(CENTER, CENTER);
+                ctx.rotate(HEAD_ANGLE / 2);
+                ctx.translate(-CENTER, -CENTER);
+                const y = HEAD_R * 2 + STICK_LEN
+                ctx.moveTo(CENTER, y);
+                ctx.lineTo(CENTER, y + STICK_LEN);
+                ctx.restore();
+            }
+            // Draw left arm
+            ctx.translate(CENTER, y);
+            ctx.rotate(Math.PI / 4);
+            ctx.moveTo(0, HEAD_R);
+            ctx.lineTo(0, HEAD_R + ARM_LEN);
+            // Draw left stick in hand
+            if (holdLeft) {
+                ctx.save();
+                ctx.translate(0, HEAD_R + ARM_LEN - 5);
+                ctx.rotate(-Math.PI / 4);
+                ctx.moveTo(0, -5);
+                ctx.lineTo(0, STICK_LEN);
+                ctx.restore();
+            }
+            // Draw right arm
+            ctx.rotate(-Math.PI / 2);
+            ctx.moveTo(0, HEAD_R);
+            ctx.lineTo(0, HEAD_R + ARM_LEN);
+            // Draw right stick in hand
+            if (right == HOLD_BY_LEFT) {
+                ctx.save();
+                ctx.translate(0, HEAD_R + ARM_LEN - 5);
+                ctx.rotate(Math.PI / 4);
+                ctx.moveTo(0, -5);
+                ctx.lineTo(0, STICK_LEN);
+                ctx.restore();
+            }
+
+            ctx.restore();
+            ctx.stroke()
+        }
+    }
+
+    function updateSticks(sticks) {
+        const offScreen = canvas.offScreen
+        const ctx = offScreen.getContext("2d");
+        ctx.clearRect(0, 0, offScreen.width, offScreen.height);
+        drawPhilosophers(ctx, sticks);
+    }
+
+    function draw() {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+        ctx.drawImage(canvas.offScreen, 0, 0);
+        window.requestAnimationFrame(draw);
+    }
+
+    function randomSticks() {
+        const sticks = new Array(N)
+        for (let i = 0; i < N; i++) {
+            sticks[i] = Math.floor(Math.random() * 3);
+        }
+        return sticks;
+    }
+
+    window.onload = function () {
+        canvas.offScreen = new OffscreenCanvas(canvas.clientWidth, canvas.clientHeight);
+        window.requestAnimationFrame(draw);
+        updateSticks([0, 0, 0, 0, 0]);
+        // setInterval(function () {
+        //     updateSticks(randomSticks());
+        // }, 500);
+        startWebsocket()
+    }
+
+    function startWebsocket() {
+        const socket = new WebSocket(`ws://${window.location.host}/ws`);
+
+        socket.onopen = () => {
+            startMutex.onclick = function () {
+                alert("Caution: Deadlock risk!")
+                socket.send(JSON.stringify("start_mutex"));
+            }
+            startMutexGroup.onclick = function () {
+                socket.send(JSON.stringify("start_mutexgroup"));
+            }
+            stop.onclick = function () {
+                socket.send(JSON.stringify("stop"));
+            }
+        };
+
+        socket.onmessage = (event) => {
+            const msg = JSON.parse(event.data)
+            switch (msg.Cmd) {
+                case "Sticks":
+                    updateSticks(msg.Sticks)
+                    break;
+                case "DinningState":
+                    switch (msg.State) {
+                        case "started":
+                            startMutex.disabled = true;
+                            startMutexGroup.disabled = true;
+                            stop.disabled = false;
+                            break;
+                        case "stopped":
+                            startMutex.disabled = false;
+                            startMutexGroup.disabled = false;
+                            stop.disabled = true;
+                            updateSticks([0, 0, 0, 0, 0]);
+                            break;
+                    }
+                    break;
+            }
+        };
+
+        socket.onclose = () => {
+            alert("Connection closed!")
+        };
+
+        socket.onerror = (error) => {
+            alert(`Connection error: ${error}!`)
+        };
+    }
+
+</script>
+
+</html>
