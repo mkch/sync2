@@ -55,3 +55,5 @@ Synchronization Primitives Beyond Go's Standard Library.
    ```
 
 The full example is available here: [Dining philosophers problem](https://github.com/mkch/sync2/tree/main/example/dinning)
+
+![Dining philosophers](https://github.com/mkch/sync2/tree/main/example/dinning/demo.png)
