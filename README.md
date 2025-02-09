@@ -2,7 +2,7 @@
 
 Synchronization Primitives Beyond Go's Standard Library.
 
-1. Interrupted Sleep:
+1. Cancellable Sleep:
 
    ```go
     func ExampleSleep() {
