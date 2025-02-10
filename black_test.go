@@ -80,6 +80,19 @@ func TestMutexCtx(t *testing.T) {
 	}
 }
 
+func TestMutexMultiCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	g := sync2.NewMutexGroupWithContext(ctx)
+	m := g.NewMutex()
+	g.Cancel() // Set cause to sync2.ErrCanceled
+	cancel()   // Nop
+	time.Sleep(time.Millisecond * 10)
+	if err := m.Lock(); err != sync2.ErrCanceled {
+		t.Fatal(err)
+	}
+}
+
 func TestSleep(t *testing.T) {
 	const d = time.Millisecond * 200
 	start := time.Now()

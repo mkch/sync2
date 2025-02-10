@@ -29,9 +29,19 @@ func testMutexCancel(t *testing.T, reason error) {
 	}
 }
 
-func TestMutexCancel(t *testing.T) {
+func TestMutexCancelPkg(t *testing.T) {
 	testMutexCancel(t, ErrCanceled)
 	testMutexCancel(t, errors.New("error1"))
+}
+
+func TestMutexMultiCancelPkg(t *testing.T) {
+	g := NewMutexGroup()
+	err1, err2 := errors.New("error1"), errors.New("error2")
+	g.cancel(err1) // Set the cause to err1
+	g.cancel(err2) // Nop
+	if err := g.NewMutex().Lock(); err != err1 {
+		t.Fatal(err)
+	}
 }
 
 func TestSleepWithCond(t *testing.T) {

@@ -45,10 +45,15 @@ func (g *MutexGroup) Cancel() {
 	g.cancel(ErrCanceled)
 }
 
-// cancels g.
+// cancel cancels g.
+// After the first call, subsequent calls do nothing.
+// Cause must not be nil.
 func (g *MutexGroup) cancel(cause error) {
 	g.c.L.Lock()
 	defer g.c.L.Unlock()
+	if g.canceled != nil {
+		return
+	}
 	g.canceled = cause
 	g.c.Broadcast()
 }
