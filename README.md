@@ -9,7 +9,7 @@ Synchronization Primitives Beyond Go's Standard Library.
         ctx, cancel := context.WithTimeout(context.Background(),
             time.Millisecond)
         defer cancel()
-        // It wont' sleep for an hour
+        // It won't sleep for an hour
         fmt.Println(sync2.Sleep(ctx, time.Hour))
         // Output:
         // context deadline exceeded
