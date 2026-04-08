@@ -34,7 +34,7 @@ func (g *MutexGroup) NewMutex() *Mutex {
 }
 
 // ErrCanceled is the cause of cancellation
-// when a mutext group is canceled by [MutexGroup.Cancel].
+// when a mutex group is canceled by [MutexGroup.Cancel].
 var ErrCanceled = errors.New("mutex group canceled")
 
 // Cancel tells g to cancel with cause [ErrCanceled].
