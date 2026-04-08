@@ -1,5 +1,12 @@
 <html>
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Dining Philosophers Problem</title>
+</head>
+
 <style>
     div#canvas_bg {
         width: fit-content;
@@ -14,6 +21,11 @@
         padding: 20;
         margin-left: auto;
         margin-right: auto;
+    }
+
+    canvas {
+        width: 300px;
+        height: 300px;
     }
 </style>
 
@@ -44,10 +56,20 @@
     const SIDE = canvas.clientWidth;
     const CENTER = SIDE / 2;
     const HEAD_ANGLE = Math.PI * 2 / N // Angle between two philosophers
+    let dpr = 1; // Device pixel ratio for HiDPI screens
 
     const ON_TABLE = 0
     const HOLD_BY_LEFT = 1
     const HOLD_BY_RIGHT = 2
+
+    function initCanvasForHiDPI() {
+        dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = canvas.clientHeight;
+        canvas.width = Math.floor(cssWidth * dpr);
+        canvas.height = Math.floor(cssHeight * dpr);
+        canvas.offScreen = new OffscreenCanvas(canvas.width, canvas.height);
+    }
 
 
     function drawPhilosophers(ctx, sticks) {
@@ -119,14 +141,16 @@
     function updateSticks(sticks) {
         const offScreen = canvas.offScreen
         const ctx = offScreen.getContext("2d");
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to identity for full canvas clear
         ctx.clearRect(0, 0, offScreen.width, offScreen.height);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // Apply DPR scaling for HiDPI rendering
         drawPhilosophers(ctx, sticks);
     }
 
     function draw() {
         const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-        ctx.drawImage(canvas.offScreen, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(canvas.offScreen, 0, 0, canvas.width, canvas.height);
         window.requestAnimationFrame(draw);
     }
 
@@ -139,7 +163,7 @@
     }
 
     window.onload = function () {
-        canvas.offScreen = new OffscreenCanvas(canvas.clientWidth, canvas.clientHeight);
+        initCanvasForHiDPI();
         window.requestAnimationFrame(draw);
         updateSticks([0, 0, 0, 0, 0]);
         // setInterval(function () {
